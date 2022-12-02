@@ -6,27 +6,6 @@ from benchmark.config import Committee, Key, NodeParameters, BenchParameters, Co
 from benchmark.utils import BenchError, Print, PathMaker
 from benchmark.commands import CommandMaker
 
-bench_params = {
-    'faults': 0,
-    'nodes': [4],
-    'workers': 1,
-    'collocate': True,
-    'rate': [10_000],
-    'tx_size': 8,
-    'duration': 120,
-    'runs': 1,
-}
-
-node_params = {
-    'header_size': 50,  # bytes
-    'max_header_delay': 5_000,  # ms
-    'gc_depth': 50,  # rounds
-    'sync_retry_delay': 10_000,  # ms
-    'sync_retry_nodes': 3,  # number of nodes
-    'batch_size': 500_000,  # bytes
-    'max_batch_delay': 200  # ms
-}
-
 def basic_config(hosts, bench_parameters_dict, node_parameters_dict):
         Print.info('Generating configuration files...')
 
@@ -80,5 +59,27 @@ def basic_config(hosts, bench_parameters_dict, node_parameters_dict):
         # silk send parameters_file
 
 hosts_file = open("hosts.txt", "r")
-hosts = hosts_file.readlines()
+hosts = hosts_file.read().splitlines()
+print(hosts)
+
+bench_params = {
+    'faults': 0,
+    'nodes': [len(hosts)],
+    'workers': 1,
+    'collocate': True,
+    'rate': [10_000],
+    'tx_size': 8,
+    'duration': 120,
+    'runs': 1,
+}
+
+node_params = {
+    'header_size': 50,  # bytes
+    'max_header_delay': 5_000,  # ms
+    'gc_depth': 50,  # rounds
+    'sync_retry_delay': 10_000,  # ms
+    'sync_retry_nodes': 3,  # number of nodes
+    'batch_size': 500_000,  # bytes
+    'max_batch_delay': 200  # ms
+}
 basic_config(hosts, bench_params, node_params)
