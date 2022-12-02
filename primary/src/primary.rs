@@ -14,7 +14,7 @@ use bytes::Bytes;
 use config::{Committee, KeyPair, Parameters, WorkerId};
 use crypto::{Digest, PublicKey, SignatureService};
 use futures::sink::SinkExt as _;
-use log::info;
+use log::{info, error};
 use network::{MessageHandler, Receiver as NetworkReceiver, Writer};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
@@ -53,6 +53,12 @@ pub enum WorkerPrimaryMessage {
     OurBatch(Digest, WorkerId),
     /// The worker indicates it received a batch's digest from another authority.
     OthersBatch(Digest, WorkerId),
+}
+
+/// The messages sent by the primary to clients to inform them of batch deliveries.
+#[derive(Debug, Serialize, Deserialize)]
+pub enum PrimaryClientMessage {
+    BatchDelivered(Digest)
 }
 
 pub struct Primary;
@@ -238,6 +244,27 @@ impl MessageHandler for PrimaryReceiverHandler {
                 .send(request)
                 .await
                 .expect("Failed to send certificate"),
+        }
+        Ok(())
+    }
+}
+
+/// Defines how the network receiver handles incoming primary messages.
+#[derive(Clone)]
+pub struct PrimaryClientReceiverHandler {}
+
+#[async_trait]
+impl MessageHandler for PrimaryClientReceiverHandler {
+    async fn dispatch(
+        &self,
+        _writer: &mut Writer,
+        serialized: Bytes,
+    ) -> Result<(), Box<dyn Error>> {
+        // Deserialize the message and send it to the synchronizer.
+        match bincode::deserialize::<PrimaryClientMessage>(&serialized) {
+            Err(e) => error!("Failed to deserialize primary message: {}", e),
+            Ok(PrimaryClientMessage::BatchDelivered(digest)) =>
+                info!("Committed -> {:?}", digest),
         }
         Ok(())
     }

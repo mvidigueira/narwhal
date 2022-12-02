@@ -28,6 +28,10 @@ class PathMaker:
         return '.parameters.json'
 
     @staticmethod
+    def client_ips_file():
+        return '.ips.txt'
+
+    @staticmethod
     def key_file(i):
         assert isinstance(i, int) and i >= 0
         return f'.node-{i}.json'

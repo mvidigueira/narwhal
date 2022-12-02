@@ -137,6 +137,19 @@ pub struct Authority {
     pub workers: HashMap<WorkerId, WorkerAddresses>,
 }
 
+#[derive(Clone, Deserialize, Default)]
+pub struct Subscriptions {
+    pub clients: Vec<SocketAddr>,
+}
+
+impl Subscriptions {
+    pub fn import(path: &str) -> Self {
+        let data = fs::read_to_string(path).unwrap();
+        let clients = data.split('\n').into_iter().map(|ip| ip.parse().unwrap()).collect();
+        Self { clients }
+    }
+}
+
 #[derive(Clone, Deserialize)]
 pub struct Committee {
     pub authorities: BTreeMap<PublicKey, Authority>,

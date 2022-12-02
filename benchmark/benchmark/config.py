@@ -160,6 +160,25 @@ class LocalCommittee(Committee):
         addresses = OrderedDict((x, ['127.0.0.1']*(1+workers)) for x in names)
         super().__init__(addresses, port)
 
+class Clients:
+    def __init__(self, addresses):
+        ''' The `addresses` field looks as follows:
+            { 
+                "name": ["host", "host", ...],
+                ...
+            }
+        '''
+        assert isinstance(addresses, list)
+        self.addresses = addresses
+
+    def print(self, filename):
+        assert isinstance(filename, str)
+        with open(filename, 'w') as f:
+            output = '\n'.join(self.addresses)
+            f.write(output)
+            f.flush()
+            f.close()
+
 
 class NodeParameters:
     def __init__(self, json):

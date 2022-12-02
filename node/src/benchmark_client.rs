@@ -12,6 +12,8 @@ use std::net::SocketAddr;
 use tokio::net::TcpStream;
 use tokio::time::{interval, sleep, Duration, Instant};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
+use primary::PrimaryClientReceiverHandler;
+use network::Receiver;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -22,6 +24,8 @@ async fn main() -> Result<()> {
         .args_from_usage("--size=<INT> 'The size of each transaction in bytes'")
         .args_from_usage("--rate=<INT> 'The rate (txs/s) at which to send the transactions'")
         .args_from_usage("--nodes=[ADDR]... 'Network addresses that must be reachable before starting the benchmark.'")
+        .args_from_usage("--port=<INT> 'Port to listen for batch deliveries'")
+        .args_from_usage("--local=<BOOL> 'Should run local or not'")
         .setting(AppSettings::ArgRequiredElseHelp)
         .get_matches();
 
@@ -51,6 +55,16 @@ async fn main() -> Result<()> {
         .map(|x| x.parse::<SocketAddr>())
         .collect::<Result<Vec<_>, _>>()
         .context("Invalid socket address format")?;
+    let port = matches
+        .value_of("port")
+        .unwrap()
+        .parse::<u16>()
+        .context("The rate of transactions must be a non-negative integer")?;
+    let local = matches
+        .value_of("local")
+        .unwrap()
+        .parse::<bool>()
+        .context("The rate of transactions must be a non-negative integer")?;
 
     info!("Node address: {}", target);
 
@@ -60,11 +74,15 @@ async fn main() -> Result<()> {
     // NOTE: This log entry is used to compute performance.
     info!("Transactions rate: {} tx/s", rate);
 
+    info!("Local: {}", local);
+
     let client = Client {
         target,
         size,
         rate,
         nodes,
+        port,
+        local,
     };
 
     // Wait for all nodes to be online and synchronized.
@@ -79,6 +97,8 @@ struct Client {
     size: usize,
     rate: u64,
     nodes: Vec<SocketAddr>,
+    port: u16,
+    local: bool,
 }
 
 impl Client {
@@ -106,6 +126,19 @@ impl Client {
         let mut transport = Framed::new(stream, LengthDelimitedCodec::new());
         let interval = interval(Duration::from_millis(BURST_DURATION));
         tokio::pin!(interval);
+
+
+        let address = if self.local { 
+            format!("127.0.0.1:{}", self.port)
+        } else {
+            format!("0.0.0.0:{}", self.port)
+        }.parse().unwrap();
+
+        Receiver::spawn(
+            address,
+            /* handler */
+            PrimaryClientReceiverHandler {},
+        );
 
         // NOTE: This log entry is used to compute performance.
         info!("Start sending transactions");

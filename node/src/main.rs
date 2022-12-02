@@ -1,11 +1,15 @@
 // Copyright(C) Facebook, Inc. and its affiliates.
 use anyhow::{Context, Result};
+use bytes::Bytes;
 use clap::{crate_name, crate_version, App, AppSettings, ArgMatches, SubCommand};
 use config::Export as _;
 use config::Import as _;
+use config::Subscriptions;
 use config::{Committee, KeyPair, Parameters, WorkerId};
 use consensus::Consensus;
 use env_logger::Env;
+use network::SimpleSender;
+use primary::PrimaryClientMessage;
 use primary::{Certificate, Primary};
 use store::Store;
 use tokio::sync::mpsc::{channel, Receiver};
@@ -32,6 +36,7 @@ async fn main() -> Result<()> {
                 .args_from_usage("--committee=<FILE> 'The file containing committee information'")
                 .args_from_usage("--parameters=[FILE] 'The file containing the node parameters'")
                 .args_from_usage("--store=<PATH> 'The path where to create the data store'")
+                .args_from_usage("--clients<FILE> 'The file containing client ips'")
                 .subcommand(SubCommand::with_name("primary").about("Run a single primary"))
                 .subcommand(
                     SubCommand::with_name("worker")
@@ -70,6 +75,7 @@ async fn run(matches: &ArgMatches<'_>) -> Result<()> {
     let key_file = matches.value_of("keys").unwrap();
     let committee_file = matches.value_of("committee").unwrap();
     let parameters_file = matches.value_of("parameters");
+    let clients_file = matches.value_of("clients");
     let store_path = matches.value_of("store").unwrap();
 
     // Read the committee and node's keypair from file.
@@ -84,6 +90,13 @@ async fn run(matches: &ArgMatches<'_>) -> Result<()> {
         }
         None => Parameters::default(),
     };
+
+    let subscriptions = match clients_file {
+        Some(filename) => {
+            Subscriptions::import(filename)
+        }
+        None => Subscriptions::default(),
+    } ;
 
     // Make the data store.
     let store = Store::new(store_path).context("Failed to create a store")?;
@@ -127,15 +140,23 @@ async fn run(matches: &ArgMatches<'_>) -> Result<()> {
     }
 
     // Analyze the consensus' output.
-    analyze(rx_output).await;
+    analyze(rx_output, subscriptions).await;
 
     // If this expression is reached, the program ends and all other tasks terminate.
     unreachable!();
 }
 
 /// Receives an ordered list of certificates and apply any application-specific logic.
-async fn analyze(mut rx_output: Receiver<Certificate>) {
-    while let Some(_certificate) = rx_output.recv().await {
+async fn analyze(mut rx_output: Receiver<Certificate>, subscriptions: Subscriptions) {
+    let mut sender = SimpleSender::new();
+
+    while let Some(certificate) = rx_output.recv().await {
         // NOTE: Here goes the application logic.
+        for digest in certificate.header.payload.keys() {
+            let message = PrimaryClientMessage::BatchDelivered(digest.clone());
+            let data = Bytes::from(bincode::serialize(&message).unwrap());
+            sender.broadcast(subscriptions.clients.clone(), data).await
+        }
+        
     }
 }

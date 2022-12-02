@@ -5,7 +5,7 @@ from os.path import basename, splitext
 from time import sleep
 
 from benchmark.commands import CommandMaker
-from benchmark.config import Key, LocalCommittee, NodeParameters, BenchParameters, ConfigError
+from benchmark.config import Key, LocalCommittee, Clients, NodeParameters, BenchParameters, ConfigError
 from benchmark.logs import LogParser, ParseError
 from benchmark.utils import Print, BenchError, PathMaker
 
@@ -71,21 +71,35 @@ class LocalBench:
             committee = LocalCommittee(names, self.BASE_PORT, self.workers)
             committee.print(PathMaker.committee_file())
 
+            workers_addresses = committee.workers_addresses(self.faults)
+
             self.node_parameters.print(PathMaker.parameters_file())
 
             # Run the clients (they will wait for the nodes to be ready).
+            client_count = 0
+            client_addresses = list()
+
             workers_addresses = committee.workers_addresses(self.faults)
             rate_share = ceil(rate / committee.workers())
             for i, addresses in enumerate(workers_addresses):
                 for (id, address) in addresses:
+                    client_addresses.append("127.0.0.1:" + str(5000 + client_count))
+
                     cmd = CommandMaker.run_client(
                         address,
                         self.tx_size,
                         rate_share,
-                        [x for y in workers_addresses for _, x in y]
+                        [x for y in workers_addresses for _, x in y],
+                        5000 + client_count,
+                        "true"
                     )
                     log_file = PathMaker.client_log_file(i, id)
                     self._background_run(cmd, log_file)
+                    
+                    client_count += 1
+
+            clients = Clients(client_addresses)
+            clients.print(PathMaker.client_ips_file())
 
             # Run the primaries (except the faulty ones).
             for i, address in enumerate(committee.primary_addresses(self.faults)):
@@ -94,6 +108,7 @@ class LocalBench:
                     PathMaker.committee_file(),
                     PathMaker.db_path(i),
                     PathMaker.parameters_file(),
+                    PathMaker.client_ips_file(),
                     debug=debug
                 )
                 log_file = PathMaker.primary_log_file(i)
@@ -107,6 +122,7 @@ class LocalBench:
                         PathMaker.committee_file(),
                         PathMaker.db_path(i, id),
                         PathMaker.parameters_file(),
+                        PathMaker.client_ips_file(),
                         id,  # The worker's id.
                         debug=debug
                     )

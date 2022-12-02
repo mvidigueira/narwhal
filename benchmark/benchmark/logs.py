@@ -34,8 +34,8 @@ class LogParser:
                 results = p.map(self._parse_clients, clients)
         except (ValueError, IndexError, AttributeError) as e:
             raise ParseError(f'Failed to parse clients\' logs: {e}')
-        self.size, self.rate, self.start, misses, self.sent_samples \
-            = zip(*results)
+        self.size, self.rate, self.start, misses, self.sent_samples, \
+            self.true_commits = zip(*results)
         self.misses = sum(misses)
 
         # Parse the primaries logs.
@@ -92,7 +92,11 @@ class LogParser:
         tmp = findall(r'\[(.*Z) .* sample transaction (\d+)', log)
         samples = {int(s): self._to_posix(t) for t, s in tmp}
 
-        return size, rate, start, misses, samples
+        tmp = findall(r'\[(.*Z) .* Committed -> ([^ ]+=)', log)
+        tmp = [(d, self._to_posix(t)) for t, d in tmp]
+        true_commits = self._merge_results([tmp]) 
+
+        return size, rate, start, misses, samples, true_commits
 
     def _parse_primaries(self, log):
         if search(r'(?:panicked|Error)', log) is not None:
@@ -104,7 +108,7 @@ class LogParser:
 
         tmp = findall(r'\[(.*Z) .* Committed B\d+\([^ ]+\) -> ([^ ]+=)', log)
         tmp = [(d, self._to_posix(t)) for t, d in tmp]
-        commits = self._merge_results([tmp])
+        commits = self._merge_results([tmp]) 
 
         configs = {
             'header_size': int(
@@ -187,6 +191,17 @@ class LogParser:
                     latency += [end-start]
         return mean(latency) if latency else 0
 
+    def _true_end_to_end_latency(self):
+        latency = []
+        for sent, received, commits in zip(self.sent_samples, self.received_samples, self.true_commits):
+            for tx_id, batch_id in received.items():
+                if batch_id in commits:
+                    assert tx_id in sent  # We receive txs that we sent.
+                    start = sent[tx_id]
+                    end = commits[batch_id]
+                    latency += [end-start]
+        return mean(latency) if latency else 0
+
     def result(self):
         header_size = self.configs[0]['header_size']
         max_header_delay = self.configs[0]['max_header_delay']
@@ -200,6 +215,7 @@ class LogParser:
         consensus_tps, consensus_bps, _ = self._consensus_throughput()
         end_to_end_tps, end_to_end_bps, duration = self._end_to_end_throughput()
         end_to_end_latency = self._end_to_end_latency() * 1_000
+        true_end_to_end_latency = self._true_end_to_end_latency() * 1_000
 
         return (
             '\n'
@@ -231,6 +247,7 @@ class LogParser:
             f' End-to-end TPS: {round(end_to_end_tps):,} tx/s\n'
             f' End-to-end BPS: {round(end_to_end_bps):,} B/s\n'
             f' End-to-end latency: {round(end_to_end_latency):,} ms\n'
+            f' True End-to-end latency: {round(true_end_to_end_latency):,} ms\n'
             '-----------------------------------------\n'
         )
 
