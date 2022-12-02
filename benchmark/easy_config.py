@@ -2,13 +2,19 @@
 from collections import OrderedDict
 import subprocess
 
-from benchmark.config import Committee, Key
-from benchmark.utils import Print, PathMaker
+from benchmark.config import Committee, Key, NodeParameters, BenchParameters, ConfigError
+from benchmark.utils import BenchError, Print, PathMaker
 from benchmark.commands import CommandMaker
 
 bench_params = {
+    'faults': 0,
+    'nodes': [4],
     'workers': 1,
     'collocate': True,
+    'rate': [10_000],
+    'tx_size': 8,
+    'duration': 120,
+    'runs': 1,
 }
 
 node_params = {
@@ -21,8 +27,14 @@ node_params = {
     'max_batch_delay': 200  # ms
 }
 
-def basic_config(hosts):
+def basic_config(hosts, bench_parameters_dict, node_parameters_dict):
         Print.info('Generating configuration files...')
+
+        try:
+            bench_parameters = BenchParameters(bench_parameters_dict)
+            node_parameters = NodeParameters(node_parameters_dict)
+        except ConfigError as e:
+            raise BenchError('Invalid nodes or bench parameters', e)
 
         # Cleanup all local configuration files.
         cmd = CommandMaker.cleanup()
@@ -46,8 +58,8 @@ def basic_config(hosts):
 
         names = [x.name for x in keys]
 
-        if bench_params.collocate:
-            workers = bench_params.workers
+        if bench_parameters.collocate:
+            workers = bench_parameters.workers
             addresses = OrderedDict(
                 (x, [y] * (workers + 1)) for x, y in zip(names, hosts)
             )
@@ -59,7 +71,7 @@ def basic_config(hosts):
         committee = Committee(addresses, 3000)
         committee.print(PathMaker.committee_file())
 
-        node_params.print(PathMaker.parameters_file())
+        node_parameters.print(PathMaker.parameters_file())
 
         # Cleanup all nodes and upload configuration files.
         # silk run CommandMaker.cleanup()
@@ -69,4 +81,4 @@ def basic_config(hosts):
 
 hosts_file = open("hosts.txt", "r")
 hosts = hosts_file.readlines()
-basic_config(hosts)
+basic_config(hosts, bench_params, node_params)
