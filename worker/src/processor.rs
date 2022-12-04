@@ -7,6 +7,7 @@ use ed25519_dalek::Digest as _;
 use ed25519_dalek::Sha512;
 use log::warn;
 use primary::WorkerPrimaryMessage;
+use rayon::prelude::IntoParallelIterator;
 use rayon::prelude::IntoParallelRefIterator;
 use rayon::prelude::ParallelIterator;
 use std::convert::TryInto;
@@ -61,8 +62,13 @@ impl Processor {
                     if batch_deser.len() > 100_000 {
                         warn!("Batch size maximum for signature verification surpassed! {}", batch_deser.len());
                     }
-
-                    ed25519_dalek::verify_batch(&message_refs[0..count], &signatures[0..count], &public_keys[0..count]).unwrap()
+                    
+                    (0..64).into_par_iter().for_each(|core| {
+                        let start = (count*core)/64;
+                        let end = std::cmp::min(count, count*(core+1)/64);
+                        ed25519_dalek::verify_batch(&message_refs[start..end], &signatures[start..end], &public_keys[start..end]).unwrap();
+                    });
+                    
                 }
 
                 // Store the batch.
