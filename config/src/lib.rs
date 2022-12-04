@@ -145,7 +145,7 @@ pub struct Subscriptions {
 impl Subscriptions {
     pub fn import(path: &str) -> Self {
         let data = fs::read_to_string(path).unwrap();
-        let clients = data.split('\n').into_iter().map(|ip| ip.parse().unwrap()).collect();
+        let clients = data.split_whitespace().into_iter().map(|ip| ip.parse::<SocketAddr>().unwrap()).collect();
         Self { clients }
     }
 }
