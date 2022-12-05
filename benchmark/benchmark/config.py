@@ -66,14 +66,14 @@ class Committee:
             host = hosts.pop(0)
             primary_addr = {
                 'primary_to_primary': f'{host}:{port}',
-                'worker_to_primary': f'{host}:{port + 1}'
+                'worker_to_primary': f'127.0.0.1:{port + 1}'
             }
             port += 2
 
             workers_addr = OrderedDict()
             for j, host in enumerate(hosts):
                 workers_addr[j] = {
-                    'primary_to_worker': f'{host}:{port}',
+                    'primary_to_worker': f'127.0.0.1:{port}',
                     'transactions': f'{host}:{port + 1}',
                     'worker_to_worker': f'{host}:{port + 2}',
                 }

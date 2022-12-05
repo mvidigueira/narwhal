@@ -47,7 +47,7 @@ def basic_config(hosts, bench_parameters_dict, node_parameters_dict):
                 (x, y) for x, y in zip(names, hosts)
             )
             
-        committee = Committee(addresses, 3000)
+        committee = Committee(addresses, 15000)
         committee.print(PathMaker.committee_file())
 
         node_parameters.print(PathMaker.parameters_file())
