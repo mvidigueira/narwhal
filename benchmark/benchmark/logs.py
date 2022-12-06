@@ -274,3 +274,22 @@ class LogParser:
                 workers += [f.read()]
 
         return cls(clients, primaries, workers, faults=faults)
+
+    @classmethod
+    def chop_process(cls, directory, faults=0):
+        assert isinstance(directory, str)
+
+        clients = []
+        for filename in sorted(glob(join(directory, 'honest_client_*.err'))):
+            with open(filename, 'r') as f:
+                clients += [f.read()]
+        primaries = []
+        for filename in sorted(glob(join(directory, 'server_*.err'))):
+            with open(filename, 'r') as f:
+                primaries += [f.read()]
+        workers = []
+        for filename in sorted(glob(join(directory, 'server_*.err'))):
+            with open(filename, 'r') as f:
+                workers += [f.read()]
+
+        return cls(clients, primaries, workers, faults=faults)
