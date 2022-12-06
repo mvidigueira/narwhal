@@ -194,7 +194,7 @@ class LogParser:
 
     def _true_end_to_end_latency(self):
         latency = []
-        for received in self.true_commits:
+        for received in self.received_samples:
             for tx_id, batch_id in received.items():
                 for (sent, commits) in zip(self.sent_samples, self.true_commits):
                     if batch_id in commits and tx_id in sent:
