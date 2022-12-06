@@ -122,7 +122,9 @@ impl Client {
         let burst = self.rate / PRECISION;
         let mut tx = BytesMut::with_capacity(self.size);
         let mut counter = 0;
-        let mut r = rand::thread_rng().gen();
+        let mut r: u64 = rand::thread_rng().gen();
+        let load_client_rand: u32 = rand::thread_rng().gen();
+
         let mut transport = Framed::new(stream, LengthDelimitedCodec::new());
         let interval = interval(Duration::from_millis(BURST_DURATION));
         tokio::pin!(interval);
@@ -150,10 +152,11 @@ impl Client {
             for x in 0..burst {
                 if x == counter % burst {
                     // NOTE: This log entry is used to compute performance.
-                    info!("Sending sample transaction {}", counter);
+                    info!("Sending sample transaction {}, (client {}, count {})", ((counter as u64) << 32) + load_client_rand as u64, load_client_rand, counter);
 
                     tx.put_u8(0u8); // Sample txs start with 0.
-                    tx.put_u64(counter); // This counter identifies the tx.
+                    tx.put_u32(counter as u32); // This counter identifies the tx.
+                    tx.put_u32(load_client_rand) 
                 } else {
                     r += 1;
                     tx.put_u8(1u8); // Standard txs start with 1.

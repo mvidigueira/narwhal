@@ -130,9 +130,11 @@ impl BatchMaker {
             for id in tx_ids {
                 // NOTE: This log entry is used to compute performance.
                 info!(
-                    "Batch {:?} contains sample tx {}",
+                    "Batch {:?} contains sample tx {}, (client {}, count {})",
                     digest,
-                    u64::from_be_bytes(id)
+                    u64::from_be_bytes(id),
+                    u64::from_be_bytes(id) & u32::MAX as u64,
+                    u64::from_be_bytes(id) >> 32
                 );
             }
 
