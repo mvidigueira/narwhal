@@ -40,14 +40,22 @@ impl Processor {
         tx_digest: Sender<SerializedBatchDigestMessage>,
         // Whether we are processing our own batches or the batches of other nodes.
         own_digest: bool,
+        // Whether to simulate signature verification or not
+        enable_verification: bool,
     ) {
-        let messages = (0..100_000u64).map(|i| i.to_le_bytes()).collect::<Vec<_>>();
+        let (messages, signatures, public_keys): (Vec<_>, Vec<_>, Vec<_>) = if enable_verification { 
+            let messages = (0..100_000u64).map(|i| i.to_le_bytes()).collect::<Vec<_>>();
 
-        let (signatures, public_keys): (Vec<_>, Vec<_>) = messages.par_iter().map(|message| { 
-            let keypair = EdKeyPair::generate(&mut OsRng);
-            let signature = keypair.sign(message);
-            (signature, keypair.public)
-        }).unzip();
+            let (signatures, public_keys) = messages.par_iter().map(|message| { 
+                let keypair = EdKeyPair::generate(&mut OsRng);
+                let signature = keypair.sign(message);
+                (signature, keypair.public)
+            }).unzip();
+
+            (messages, signatures, public_keys)
+        } else {
+            (vec!(), vec!(), vec!())
+        };
 
         tokio::spawn(async move {
             let message_refs = messages.iter().map(|m| m.as_slice()).collect::<Vec<_>>();
@@ -56,19 +64,20 @@ impl Processor {
                 // Hash the batch.
                 let digest = Digest(Sha512::digest(&batch).as_slice()[..32].try_into().unwrap());
 
-                let batch_deser = bincode::deserialize::<WorkerMessage>(&batch).unwrap();
-                if let WorkerMessage::Batch(batch_deser) = batch_deser {
-                    let count = std::cmp::min(100_000, batch_deser.len());
-                    if batch_deser.len() > 100_000 {
-                        warn!("Batch size maximum for signature verification surpassed! {}", batch_deser.len());
+                if enable_verification {
+                    let batch_deser = bincode::deserialize::<WorkerMessage>(&batch).unwrap();
+                    if let WorkerMessage::Batch(batch_deser) = batch_deser {
+                        let count = std::cmp::min(100_000, batch_deser.len());
+                        if batch_deser.len() > 100_000 {
+                            warn!("Batch size maximum for signature verification surpassed! {}", batch_deser.len());
+                        }
+                        
+                        (0..64).into_par_iter().for_each(|core| {
+                            let start = (count*core)/64;
+                            let end = std::cmp::min(count, count*(core+1)/64);
+                            ed25519_dalek::verify_batch(&message_refs[start..end], &signatures[start..end], &public_keys[start..end]).unwrap();
+                        });
                     }
-                    
-                    (0..64).into_par_iter().for_each(|core| {
-                        let start = (count*core)/64;
-                        let end = std::cmp::min(count, count*(core+1)/64);
-                        ed25519_dalek::verify_batch(&message_refs[start..end], &signatures[start..end], &public_keys[start..end]).unwrap();
-                    });
-                    
                 }
 
                 // Store the batch.

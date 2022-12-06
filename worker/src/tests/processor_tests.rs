@@ -23,6 +23,7 @@ async fn hash_and_store() {
         rx_batch,
         tx_digest,
         /* own_batch */ true,
+        /* enable_verification */ false,
     );
 
     // Send a batch to the `Processor`.

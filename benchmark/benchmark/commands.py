@@ -52,8 +52,12 @@ class CommandMaker:
         assert isinstance(rate, int) and rate >= 0
         assert isinstance(nodes, list)
         assert all(isinstance(x, str) for x in nodes)
+        if local:
+            local = "--local"
+        else:
+            local = ""
         nodes = f'--nodes {" ".join(nodes)}' if nodes else ''
-        return f'./benchmark_client {address} --size {size} --rate {rate} {nodes} --port {port} --local {local}'
+        return f'./benchmark_client {address} --size {size} --rate {rate} {nodes} --port {port} {local}'
 
     @staticmethod
     def kill():

@@ -185,6 +185,7 @@ impl Worker {
             /* rx_batch */ rx_processor,
             /* tx_digest */ tx_primary,
             /* own_batch */ true,
+            self.parameters.enable_verification,
         );
 
         info!(
@@ -230,6 +231,7 @@ impl Worker {
             /* rx_batch */ rx_processor,
             /* tx_digest */ tx_primary,
             /* own_batch */ false,
+            self.parameters.enable_verification,
         );
 
         info!(

@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
         .args_from_usage("--rate=<INT> 'The rate (txs/s) at which to send the transactions'")
         .args_from_usage("--nodes=[ADDR]... 'Network addresses that must be reachable before starting the benchmark.'")
         .args_from_usage("--port=<INT> 'Port to listen for batch deliveries'")
-        .args_from_usage("--local=<BOOL> 'Should run local or not'")
+        .args_from_usage("--local 'Should run local or not'")
         .setting(AppSettings::ArgRequiredElseHelp)
         .get_matches();
 
@@ -61,10 +61,7 @@ async fn main() -> Result<()> {
         .parse::<u16>()
         .context("The rate of transactions must be a non-negative integer")?;
     let local = matches
-        .value_of("local")
-        .unwrap()
-        .parse::<bool>()
-        .context("The rate of transactions must be a non-negative integer")?;
+        .is_present("local");
 
     info!("Node address: {}", target);
 

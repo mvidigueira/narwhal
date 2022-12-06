@@ -80,6 +80,7 @@ node_params = {
     'sync_retry_delay': 10_000,  # ms
     'sync_retry_nodes': 3,  # number of nodes
     'batch_size': 500_000,  # bytes
-    'max_batch_delay': 200  # ms
+    'max_batch_delay': 200,  # ms
+    'enable_verification': False # bool
 }
 basic_config(hosts, bench_params, node_params)
