@@ -162,12 +162,13 @@ class LogParser:
         start, end = min(self.proposals.values()), max(self.commits.values())
         duration = end - start
         bytes = sum(self.sizes.values())
+        print(bytes)
         bps = bytes / duration
         tps = bps / self.size[0]
         return tps, bps, duration
 
     def _consensus_latency(self):
-        latency = [c - self.proposals[d] for d, c in self.commits.items()]
+        latency = [c - self.proposals[d] for d, c in self.commits.items() if d in self.proposals]
         return mean(latency) if latency else 0
 
     def _end_to_end_throughput(self):
@@ -217,7 +218,7 @@ class LogParser:
         end_to_end_tps, end_to_end_bps, duration = self._end_to_end_throughput()
         end_to_end_latency = self._end_to_end_latency() * 1_000
         true_end_to_end_latency = self._true_end_to_end_latency() * 1_000
-
+        
         return (
             '\n'
             '-----------------------------------------\n'
