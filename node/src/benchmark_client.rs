@@ -65,7 +65,7 @@ async fn main() -> Result<()> {
     let local = matches
         .is_present("local");
     let honest = matches
-        .is_present("local");
+        .is_present("honest");
 
     info!("Node address: {}", target);
 
