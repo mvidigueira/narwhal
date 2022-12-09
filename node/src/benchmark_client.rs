@@ -26,6 +26,7 @@ async fn main() -> Result<()> {
         .args_from_usage("--nodes=[ADDR]... 'Network addresses that must be reachable before starting the benchmark.'")
         .args_from_usage("--port=<INT> 'Port to listen for batch deliveries'")
         .args_from_usage("--local 'Should run local or not'")
+        .args_from_usage("--honest 'Make every sent transaction a sample transaction")
         .setting(AppSettings::ArgRequiredElseHelp)
         .get_matches();
 
@@ -62,6 +63,8 @@ async fn main() -> Result<()> {
         .context("The rate of transactions must be a non-negative integer")?;
     let local = matches
         .is_present("local");
+    let honest = matches
+        .is_present("local");
 
     info!("Node address: {}", target);
 
@@ -73,6 +76,8 @@ async fn main() -> Result<()> {
 
     info!("Local: {}", local);
 
+    info!("Honest: {}", honest);
+
     let client = Client {
         target,
         size,
@@ -80,6 +85,7 @@ async fn main() -> Result<()> {
         nodes,
         port,
         local,
+        honest,
     };
 
     // Wait for all nodes to be online and synchronized.
@@ -96,12 +102,12 @@ struct Client {
     nodes: Vec<SocketAddr>,
     port: u16,
     local: bool,
+    honest: bool,
 }
 
 impl Client {
     pub async fn send(&self) -> Result<()> {
-        const PRECISION: u64 = 20; // Sample precision.
-        const BURST_DURATION: u64 = 1000 / PRECISION;
+        const BURST_DURATION: u64 = 1000;
 
         // The transaction size must be at least 16 bytes to ensure all txs are different.
         if self.size < 8 {
@@ -116,19 +122,16 @@ impl Client {
             .context(format!("failed to connect to {}", self.target))?;
 
         // Submit all transactions.
-        let burst = self.rate / PRECISION;
+        let burst = self.rate;
         let mut tx = BytesMut::with_capacity(self.size);
         let mut counter = 0;
         let mut r: u32 = rand::thread_rng().gen();
         let load_client_rand: u32 = rand::thread_rng().gen();
 
         let mut transport = Framed::new(stream, LengthDelimitedCodec::new());
-
-        info!("Burst duration: {} millis", BURST_DURATION);
         
         let interval = interval(Duration::from_millis(BURST_DURATION));
         tokio::pin!(interval);
-
 
         let address = if self.local { 
             format!("127.0.0.1:{}", self.port)
@@ -151,12 +154,11 @@ impl Client {
 
             info!("Sending burst");
 
-            for x in 0..burst {
-                if x == counter % burst {
+            for _ in 0..burst {
+                if self.honest {
                     // NOTE: This log entry is used to compute performance.
                     info!("Sending sample transaction {}, (client {}, count {})", ((counter as u64) << 32) + load_client_rand as u64, load_client_rand, counter);
 
-                    // tx.put_u8(0u8); // Sample txs start with 0.
                     let mut counter = (counter as u32).to_be_bytes();
                     counter[0] = 0u8;
                     tx.put_u32(u32::from_be_bytes(counter)); // This counter identifies the tx.
