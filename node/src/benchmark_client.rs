@@ -104,9 +104,9 @@ impl Client {
         const BURST_DURATION: u64 = 1000 / PRECISION;
 
         // The transaction size must be at least 16 bytes to ensure all txs are different.
-        if self.size < 9 {
+        if self.size < 8 {
             return Err(anyhow::Error::msg(
-                "Transaction size must be at least 9 bytes",
+                "Transaction size must be at least 8 bytes",
             ));
         }
 
@@ -119,7 +119,7 @@ impl Client {
         let burst = self.rate / PRECISION;
         let mut tx = BytesMut::with_capacity(self.size);
         let mut counter = 0;
-        let mut r: u64 = rand::thread_rng().gen();
+        let mut r: u32 = rand::thread_rng().gen();
         let load_client_rand: u32 = rand::thread_rng().gen();
 
         let mut transport = Framed::new(stream, LengthDelimitedCodec::new());
@@ -151,13 +151,15 @@ impl Client {
                     // NOTE: This log entry is used to compute performance.
                     info!("Sending sample transaction {}, (client {}, count {})", ((counter as u64) << 32) + load_client_rand as u64, load_client_rand, counter);
 
-                    tx.put_u8(0u8); // Sample txs start with 0.
-                    tx.put_u32(counter as u32); // This counter identifies the tx.
+                    // tx.put_u8(0u8); // Sample txs start with 0.
+                    let mut counter = (counter as u32).to_be_bytes();
+                    counter[0] = 0u8;
+                    tx.put_u32(u32::from_be_bytes(counter)); // This counter identifies the tx.
                     tx.put_u32(load_client_rand) 
                 } else {
                     r += 1;
-                    tx.put_u8(1u8); // Standard txs start with 1.
-                    tx.put_u64(r); // Ensures all clients send different txs.
+                    tx.put_u32(u32::MAX);
+                    tx.put_u32(r); // Ensures all clients send different txs.
                 };
 
                 tx.resize(self.size, 0u8);

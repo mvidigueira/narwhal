@@ -108,8 +108,8 @@ impl BatchMaker {
         let tx_ids: Vec<_> = self
             .current_batch
             .iter()
-            .filter(|tx| tx[0] == 0u8 && tx.len() > 8)
-            .filter_map(|tx| tx[1..9].try_into().ok())
+            .filter(|tx| tx[0] == 0 && tx.len() == 8)
+            .filter_map(|tx| tx[0..8].try_into().ok())
             .collect();
 
         // Serialize the batch.
