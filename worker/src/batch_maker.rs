@@ -108,7 +108,7 @@ impl BatchMaker {
         let tx_ids: Vec<_> = self
             .current_batch
             .iter()
-            .filter(|tx| tx[0] == 0 && tx.len() == 8)
+            .filter(|tx| tx[0] == 0)
             .filter_map(|tx| tx[0..8].try_into().ok())
             .collect();
 
