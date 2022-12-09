@@ -7,6 +7,7 @@ use env_logger::Env;
 use futures::future::join_all;
 use futures::sink::SinkExt as _;
 use log::{info, warn};
+use primary::PrimaryClientReceiverHandlerNoPrint;
 use rand::Rng;
 use std::net::SocketAddr;
 use tokio::net::TcpStream;
@@ -139,11 +140,19 @@ impl Client {
             format!("0.0.0.0:{}", self.port)
         }.parse().unwrap();
 
-        Receiver::spawn(
-            address,
-            /* handler */
-            PrimaryClientReceiverHandler {},
-        );
+        if self.honest {
+            Receiver::spawn(
+                address,
+                /* handler */
+                PrimaryClientReceiverHandler {},
+            );
+        } else {
+            Receiver::spawn(
+                address,
+                /* handler */
+                PrimaryClientReceiverHandlerNoPrint {},
+            );
+        }
 
         // NOTE: This log entry is used to compute performance.
         info!("Start sending transactions");

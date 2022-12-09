@@ -270,6 +270,26 @@ impl MessageHandler for PrimaryClientReceiverHandler {
     }
 }
 
+/// Defines how the network receiver handles incoming primary messages.
+#[derive(Clone)]
+pub struct PrimaryClientReceiverHandlerNoPrint {}
+
+#[async_trait]
+impl MessageHandler for PrimaryClientReceiverHandlerNoPrint {
+    async fn dispatch(
+        &self,
+        _writer: &mut Writer,
+        serialized: Bytes,
+    ) -> Result<(), Box<dyn Error>> {
+        // Deserialize the message and send it to the synchronizer.
+        match bincode::deserialize::<PrimaryClientMessage>(&serialized) {
+            Err(e) => error!("Failed to deserialize primary message: {}", e),
+            Ok(PrimaryClientMessage::BatchDelivered(_)) => (),
+        }
+        Ok(())
+    }
+}
+
 /// Defines how the network receiver handles incoming workers messages.
 #[derive(Clone)]
 struct WorkerReceiverHandler {

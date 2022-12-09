@@ -18,4 +18,4 @@ mod synchronizer;
 mod common;
 
 pub use crate::messages::{Certificate, Header};
-pub use crate::primary::{Primary, PrimaryWorkerMessage, PrimaryClientMessage, PrimaryClientReceiverHandler, Round, WorkerPrimaryMessage};
+pub use crate::primary::{Primary, PrimaryWorkerMessage, PrimaryClientMessage, PrimaryClientReceiverHandler, PrimaryClientReceiverHandlerNoPrint, Round, WorkerPrimaryMessage};
