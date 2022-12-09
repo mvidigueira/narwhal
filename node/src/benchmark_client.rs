@@ -123,6 +123,9 @@ impl Client {
         let load_client_rand: u32 = rand::thread_rng().gen();
 
         let mut transport = Framed::new(stream, LengthDelimitedCodec::new());
+
+        info!("Burst duration: {} millis", BURST_DURATION);
+        
         let interval = interval(Duration::from_millis(BURST_DURATION));
         tokio::pin!(interval);
 
@@ -145,6 +148,8 @@ impl Client {
         'main: loop {
             interval.as_mut().tick().await;
             let now = Instant::now();
+
+            info!("Sending burst");
 
             for x in 0..burst {
                 if x == counter % burst {
