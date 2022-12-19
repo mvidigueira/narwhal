@@ -2,6 +2,7 @@
 from os.path import join
 from datetime import datetime
 from glob import glob
+import json
 from multiprocessing import Pool
 from os.path import join
 from re import findall, search
@@ -367,8 +368,20 @@ class LogParser:
         true_end_to_end_latency = mean(true_end_to_end_latency_values) * 1_000
 
         estimated_tps = int(float(64)/float(len(self.received_samples)) * float(end_to_end_tps))
-        
+
+	# 2022-12-10 PLR: export to json to make it easier to import and add latency distribution
+        json_data = {}
+        json_data['throughput-avg'] = round(end_to_end_tps)
+        json_data['latency-avg'] = round(true_end_to_end_latency)
+        json_data['latency'] = true_end_to_end_latency_values
+        prefix = sys.argv[1].rstrip('/') # remove righ-most slashes
+        filename = '{}.easier-log.json'.format(prefix)
+        with open(filename, 'w') as f:
+            json.dump(json_data, f)
+
         return (
+            '\n'
+            f'Added json file: {filename}\n'
             '\n'
             '-----------------------------------------\n'
             ' SUMMARY:\n'
@@ -432,22 +445,22 @@ class LogParser:
         assert isinstance(directory, str)
 
         clients = []
-        for filename in sorted(glob(join(directory, '*/honest_client_*.err'), recursive=True)):
+        for filename in sorted(glob(join(directory, 'honest_client_*.err'), recursive=True)):
             with open(filename, 'r') as f:
                 clients += [f.read()]
         primaries = []
-        for filename in sorted(glob(join(directory, '*/server_*.err'), recursive=True)):
+        for filename in sorted(glob(join(directory, 'server_*.err'), recursive=True)):
             with open(filename, 'r') as f:
                 primaries += [f.read()]
         workers = []
-        for filename in sorted(glob(join(directory, '*/server_*.err'), recursive=True)):
+        for filename in sorted(glob(join(directory, 'server_*.err'), recursive=True)):
             with open(filename, 'r') as f:
                 workers += [f.read()]
 
         return cls(clients, primaries, workers, faults=faults)
 
 # Now you just need to give it the name a
-# Example Usage: python3 easier_log.py comma-64-baselines/bullshark_64-500000_64-200000_16-1_88_1_2022-12-09-17-40-10_3_eu-west-2/ 
+# Example Usage: python3 easier_log.py ~/sorted-results/comma-64-bullshark-sig/workload-1000000/run-5/
 
 ''' Print a summary of the logs '''
 try:
