@@ -14,6 +14,15 @@ def basic_config(hosts, bench_parameters_dict, node_parameters_dict):
             node_parameters = NodeParameters(node_parameters_dict)
         except ConfigError as e:
             raise BenchError('Invalid nodes or bench parameters', e)
+        
+        if not bench_parameters.collocate:
+            def chunks(lst, n):
+                for i in range(0, len(lst), n):
+                    yield lst[i:i + n]
+            hosts = list(chunks(hosts, bench_parameters.workers + 1))
+
+        print("Processed hosts:")
+        print(hosts)
 
         # Cleanup all local configuration files.
         cmd = CommandMaker.cleanup()
@@ -65,8 +74,8 @@ print(hosts)
 bench_params = {
     'faults': 0,
     'nodes': [len(hosts)],
-    'workers': 1,
-    'collocate': True,
+    'workers': 2,
+    'collocate': False, # If a localhost ip is passed, that worker is still colocated
     'rate': [10_000],
     'tx_size': 8,
     'duration': 120,
@@ -83,4 +92,5 @@ node_params = {
     'max_batch_delay': 200,  # ms
     'enable_verification': False # bool
 }
+
 basic_config(hosts, bench_params, node_params)
