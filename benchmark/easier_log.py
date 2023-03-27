@@ -440,7 +440,7 @@ class LogParser:
             with open(filename, 'r') as f:
                 primaries += [f.read()]
         workers = []
-        for filename in sorted(glob(join(directory, '*/server_*.err'), recursive=True)):
+        for filename in sorted(glob(join(directory, '*/server_*.err'), recursive=True) + glob(join(directory, '*/worker_*.err'), recursive=True)):
             with open(filename, 'r') as f:
                 workers += [f.read()]
 
