@@ -55,7 +55,7 @@ class Committee:
             isinstance(x, list) and len(x) > 1 for x in addresses.values()
         )
         assert all(
-            isinstance(x, str) for y in addresses.values() for x in y
+            (isinstance(x, str) or (isinstance(x, list) and len(x) == 2 and (isinstance(z, str) for z in x))) for y in addresses.values() for x in y
         )
         assert len({len(x) for x in addresses.values()}) == 1
         assert isinstance(base_port, int) and base_port > 1024
@@ -64,18 +64,24 @@ class Committee:
         self.json = {'authorities': OrderedDict()}
         for name, hosts in addresses.items():
             host = hosts.pop(0)
+            public = host[0] if isinstance(host, list) else host
+            private = host[1] if isinstance(host, list) else '127.0.0.1'
+
             primary_addr = {
-                'primary_to_primary': f'{host}:{port}',
-                'worker_to_primary': f'127.0.0.1:{port + 1}'
+                'primary_to_primary': f'{public}:{port}',
+                'worker_to_primary': f'{private}:{port + 1}'
             }
             port += 2
 
             workers_addr = OrderedDict()
             for j, host in enumerate(hosts):
+                public = host[0] if isinstance(host, list) else host
+                private = host[1] if isinstance(host, list) else '127.0.0.1'
+
                 workers_addr[j] = {
-                    'primary_to_worker': f'127.0.0.1:{port}',
-                    'transactions': f'{host}:{port + 1}',
-                    'worker_to_worker': f'{host}:{port + 2}',
+                    'primary_to_worker': f'{private}:{port}',
+                    'transactions': f'{public}:{port + 1}',
+                    'worker_to_worker': f'{public}:{port + 2}',
                 }
                 port += 3
 

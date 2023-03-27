@@ -61,14 +61,26 @@ def basic_config(hosts, bench_parameters_dict, node_parameters_dict):
 
         node_parameters.print(PathMaker.parameters_file())
 
+        print("Done")
+
         # Cleanup all nodes and upload configuration files.
         # silk run CommandMaker.cleanup()
         # silk send committee_file
         # silk send key_file*
         # silk send parameters_file
 
+def parse(lst):
+    for i in range(0, len(lst)):
+        if len(lst[i].split()) > 1:
+            yield lst[i].split()
+        else:
+            yield lst[i]
+
 hosts_file = open("hosts.txt", "r")
 hosts = hosts_file.read().splitlines()
+
+hosts = list(parse(hosts))
+
 print(hosts)
 
 bench_params = {
